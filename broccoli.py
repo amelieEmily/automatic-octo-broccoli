@@ -27,23 +27,23 @@ class TreeNode:
 #             if dataset[num][7] != dataset[num+1][7]: #Find a split point.
 #                 set_left =
 
-def split_set(data, split_point):
+def split_set(data, split_point, column): #Split the data w.r.t to column and split point value. Return the left set and the right set.
     set_left = []
     set_right = []
     for datum in data:
-        if datum < split_point:
+        if datum[column] < split_point:
             set_left.append(datum)
         else:
             set_right.append(datum)
     return (set_left, set_right)
 
-def calculate_gain(dataset, left, right, column):
+def calculate_gain(dataset, left, right): #Return the gain for the dataset and the given left set and right set.
     left_size = len(left)
     right_size = len(right)
     remainder = left_size/len(dataset) * calculate_enthropy(left) + right_size/len(dataset) * calculate_enthropy(right)
     return calculate_enthropy(dataset) - remainder
 
-def calculate_enthropy(dataset):
+def calculate_enthropy(dataset): #Calculate the enthropy for the dataset.
     p = [0,0,0,0]
     entropy = 0
     for data in dataset:
