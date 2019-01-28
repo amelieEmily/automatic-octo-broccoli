@@ -4,17 +4,17 @@ import math
 clean = np.loadtxt("co395-cbc-dt/wifi_db/clean_dataset.txt", usecols= (0,1,2,3,4,5,6,7),unpack= False)
 noisy = np.loadtxt("co395-cbc-dt/wifi_db/noisy_dataset.txt", usecols= (0,1,2,3,4,5,6,7),unpack= False)
 
-temp = clean
-
 class TreeNode:
     def __init__(self, v, lc, rc):
         self.nodeValue = v
         self.lChild = lc
         self.rChild = rc
+    def __str__(self):
+        return str(self.nodeValue)
 
 def decision_tree_learning(dataset, depth):
     if len(set([data[-1] for data in dataset])) == 1:         #check the last column(labels) and if all of them are samely labeled, return this dataset as a leaf
-        return (TreeNode((7,dataset[0][7]), None, None), depth)
+        return (TreeNode((-1,dataset[0][7]), None, None), depth)
     else:
         node = find_split(dataset)
         temp = list(dataset)
@@ -24,9 +24,8 @@ def decision_tree_learning(dataset, depth):
         (r_branch, r_depth) = decision_tree_learning(r_dataset, depth + 1)
         return (TreeNode(node, l_branch, r_branch), max(l_depth, r_depth))
 
-
 def find_split(dataset): #returns a treeNode with the splitting column and the splitting point stored
-    column_length = len(dataset[0])
+    column_length = len(dataset[0])-1 #Avoid splitting the last column: the answer column.
     max_gain = 0
     max_gain_split_value = 0
     column_no = 0;
@@ -44,8 +43,8 @@ def find_split_point_for_column(dataset, column): #return a best gaining splitti
     biggest_gain = 0 #Store the biggest gain.
     biggest_gain_splitting_point = 0
     row_length = len(dataset)
-    for num in range(row_length):
-        if (dataset[num][7] != dataset[num+1][7]) && (dataset[num][column] != dataset[num+1][column]): #Find a split point.
+    for num in range(row_length-1):
+        if ((dataset[num][7] != dataset[num+1][7]) and (dataset[num][column] != dataset[num+1][column])): #Find a split point.
             split_value = dataset[num+1][column]
             (set_left, set_right) = split_set(dataset, split_value, column)
             gain = calculate_gain(dataset, set_left, set_right)
@@ -77,5 +76,21 @@ def calculate_enthropy(dataset): #Calculate the enthropy for the dataset.
     for data in dataset:
         p[np.int(data[7])-1] += 1
     for prob in p:
-        entropy -= math.log2(prob/len(dataset)) * prob/len(dataset)
+        if(prob != 0):
+            entropy -= math.log2(prob/len(dataset)) * prob/len(dataset)
     return entropy
+
+def visualize_tree(node, depth):
+    print(depth*'  '+str(node.nodeValue))
+    if node.lChild != None:
+        if node.rChild != None:
+            visualize_tree(node.lChild, depth+1)
+            visualize_tree(node.rChild, depth+1)
+        else:
+            visualize_tree(node.lChild, depth+1)
+    else:
+        if node.rChild != None:
+            #print(str(node.rChild))
+            visualize_tree(node.rChild, depth+1)
+    if node.lChild == None and node.rChild == None:
+        print(depth*'  '+"*LEAF NODE*")
