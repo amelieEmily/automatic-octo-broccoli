@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from random import shuffle
 
 clean = np.loadtxt("co395-cbc-dt/wifi_db/clean_dataset.txt", usecols= (0,1,2,3,4,5,6,7),unpack= False)
 noisy = np.loadtxt("co395-cbc-dt/wifi_db/noisy_dataset.txt", usecols= (0,1,2,3,4,5,6,7),unpack= False)
@@ -167,3 +168,28 @@ def cal_avg_classification_rate(confusion_matrix):
         classif_rates[i] = (tp + tn) / (tp + tn + fn + fp)
 
     return sum(classif_rates) / len(classif_rates)
+
+def write_report(test_db, trained_tree): # Not sure where this goes (Please delete if not needed)
+    confusion_matrix = cal_confusion_matrix(test_db, trained_tree) # Calculate confusion matrix
+    print("Confusion Matrix: ")
+    print(confusion_matrix)
+
+    recalls = cal_recall_rates(confusion_matrix) # Calculate recall rates
+    print("Recall rates: ")
+    print(recalls)
+
+    predictions = cal_prediction_rates(confusion_matrix) # Calculate prediction rates
+    print("Prediction rates: ")
+    print(predictions)
+
+    f1s = cal_f1(recalls, predictions) # Calculate F1 measures
+    print("F1 measures: ")
+    print(f1s)
+
+    avg_clasif_rate = cal_avg_classification_rate(confusion_matrix) # Calculate average classification rate
+    print("Average classification rate: ")
+    print(avg_clasif_rate)
+
+def evaluate(test_db, trained_tree):
+    confusion_matrix = cal_confusion_matrix(test_db, trained_tree) # Calculate confusion matrix
+    return cal_avg_classification_rate(confusion_matrix) # Return average classification rate
