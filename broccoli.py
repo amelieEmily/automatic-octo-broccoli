@@ -145,7 +145,7 @@ def cal_prediction_rates(confusion_matrix):
     return predictions
 
 def cal_f1(recall_rates, prediction_rates): # This function takes in output from cal_recall_rates and cal_prediction_rates
-    f1s = [0,0,0,0]
+    f1s = [0,0,0,0] # Array for storing the F1 measures of each class
 
     for i in range(4):
         recall = recall_rates[i]
@@ -153,3 +153,17 @@ def cal_f1(recall_rates, prediction_rates): # This function takes in output from
         f1s[i] = 2 * (recall * prediction) / (recall + prediction)
 
     return f1s
+
+def cal_avg_classification_rate(confusion_matrix):
+    classif_rates = [0,0,0,0] # Array for storing the classification rates of each class
+
+    all_trues = [confusion_matrix[i][i] for i in range(4)]
+
+    for i in range(4):
+        tp = confusion_matrix[i][i] # Number of True Positive(TP)
+        tn = sum(all_trues) - tp # Number of True Negative(TN)
+        fn = sum(confusion_matrix[i]) - tp # Number of False Negative(FN)
+        fp = sum([confusion_matrix[n][i] for n in range(4)]) - tp # Number of False Positive(FP)
+        classif_rates[i] = (tp + tn) / (tp + tn + fn + fp)
+
+    return sum(classif_rates) / len(classif_rates)
