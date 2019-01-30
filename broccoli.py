@@ -96,6 +96,36 @@ def visualize_tree(node, depth):
     if node.lChild == None and node.rChild == None:
         print(depth*'  '+"*LEAF NODE*")
 
+def divide_set_into_folds(dataset, total_folds): #Divide the dataset into n folds. *TESTED*
+    dataset_in_folds = []
+    subset_size = 0
+    if len(dataset) % total_folds == 0:
+        subset_size = len(dataset) // total_folds
+    else:
+        subset_size = len(dataset) // total_folds + 1
+    for i in range (total_folds):
+        subset = []
+        for x in range(i*subset_size, (i+1)*subset_size):
+            if x < len(dataset):
+                subset.append(dataset[x])
+        dataset_in_folds.append(subset)
+    return dataset_in_folds
+
+def get_folds(dataset_in_folds, folds_num): #Return folds whose index is given as a list. *TESTED*
+    folds = []
+    for num in folds_num:
+        folds.extend(dataset_in_folds[num])
+    return folds
+
+def evaluate(test_db, trained_tree):
+    # Perform 10-fold cross validation.
+    
+
+
+
+    confusion_matrix = cal_confusion_matrix(test_db, trained_tree) # Calculate confusion matrix
+    return cal_avg_classification_rate(confusion_matrix) # Return average classification rate
+
 def cal_confusion_matrix(test_db,trained_tree):
     confusion = np.zeros((4,4), dtype=np.int) # Create a 4x4 matrix
     #   Structure of the confusion matrix (A 4x4 2D array)
@@ -189,7 +219,3 @@ def write_report(test_db, trained_tree): # Not sure where this goes (Please dele
     avg_clasif_rate = cal_avg_classification_rate(confusion_matrix) # Calculate average classification rate
     print("Average classification rate: ")
     print(avg_clasif_rate)
-
-def evaluate(test_db, trained_tree):
-    confusion_matrix = cal_confusion_matrix(test_db, trained_tree) # Calculate confusion matrix
-    return cal_avg_classification_rate(confusion_matrix) # Return average classification rate
