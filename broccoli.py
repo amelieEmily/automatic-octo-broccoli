@@ -32,30 +32,31 @@ def find_split(dataset): #returns a treeNode with the splitting column and the s
     column_no = 0;
     for column in range(column_length):
          (max_gain_col, max_gain_split_point_col) = find_split_point_for_column(dataset, column)
-         if (max_gain_col > max_gain):
+         if (max_gain_col > max_gain): #Find the maximum gain and the corresponding split point among all column's maximum gain.
              max_gain = max_gain_col
              max_gain_split_value = max_gain_split_point_col
              column_no = column
     return (column_no, max_gain_split_value)
 
-def find_split_point_for_column(dataset, column): #return a best gaining splitting point and its gain in tuples
+def find_split_point_for_column(dataset, column): #return the best gaining splitting point and its gain of this column in tuples.
     temp = list(dataset)
-    dataset = np.array(sorted(temp, key=lambda x:(x[column], x[7]))) #Sort the dataset w.r.t the column's value of every datum.
-    biggest_gain = 0 #Store the biggest gain.
+    dataset = np.array(sorted(temp, key=lambda x:(x[column], x[7]))) #Sort the dataset w.r.t the column's value and the last column of every datum.
+    biggest_gain = 0 #Store the biggest gain and the corresponding split point.
     biggest_gain_splitting_point = 0
     row_length = len(dataset)
-    for num in range(row_length-1):
+    for num in range(row_length-1): #Compare two adjacent data and find split point with the biggest gain.
         if ((dataset[num][7] != dataset[num+1][7]) and (dataset[num][column] != dataset[num+1][column])): #Find a split point.
-            split_value = dataset[num+1][column]
-            (set_left, set_right) = split_set(dataset, split_value, column)
+            split_point = dataset[num+1][column]
+            (set_left, set_right) = split_set(dataset, split_point, column)
             gain = calculate_gain(dataset, set_left, set_right)
+            if (len(set_left) == 0 or len(set_right) == 0):
+                gain = 0
             if biggest_gain < gain:
                 biggest_gain = gain
-                biggest_gain_splitting_point = split_value
-
+                biggest_gain_splitting_point = split_point
     return (biggest_gain, biggest_gain_splitting_point)
 
-def split_set(data, split_value, column):
+def split_set(data, split_value, column): #Split a set w.r.t to a split point.
     set_left = []
     set_right = []
     for datum in data:
@@ -76,9 +77,9 @@ def calculate_enthropy(dataset): #Calculate the enthropy for the dataset.
     entropy = 0
     for data in dataset:
         p[np.int(data[7])-1] += 1
-    for prob in p:
-        if(prob != 0):
-            entropy -= math.log2(prob/len(dataset)) * prob/len(dataset)
+    for count in p:
+        if(count != 0):
+            entropy -= math.log2(count/len(dataset)) * count/len(dataset)
     return entropy
 
 def visualize_tree(node, depth):
@@ -118,34 +119,37 @@ def get_folds(dataset_in_folds, folds_num): #Return folds whose index is given a
     return folds
 
 def ten_cross_validation(dataset):
+    np.random.shuffle(dataset)
     test_set = []
-    dataset_in_folds = divide_set_into_folds(dataset, 10)
+    dataset_in_folds = divide_set_into_folds(dataset, 10) #Divide the dataset into 10 folds.
     global_error_rate = 0
-    for i in range(10):
+    for i in range(10): #let Test_set be different fold every time.
         print("Test set "+str(i))
         test_set = dataset_in_folds[i]
         validation_and_training_set = []
-        validation_set = []
-        training_set = []
         best_trained_tree = None
-        for z in range(10):
+        for z in range(10): #This mainly splits the whole set into test set and the rest, which is validation set and training set.
             if (z != i):
                 validation_and_training_set.append(dataset_in_folds[z])
-        for x in range(9):
+        for x in range(9): #Switch validation set each time.
+            training_set = []
             validation_set = validation_and_training_set[x]
             local_error_rate = 1
-            for y in range(9):
+            for y in range(9): #Splits the validation_and_training_set into validation and training set individually.
                 if (y != x):
-                    training_set.extend(validation_and_training_set[y])
-            trained_tree = decision_tree_learning(training_set, 0)[0]
-            print("Validation set "+str(i))
-            visualize_tree(trained_tree, 0)
-            error_rate = evaluate(validation_set, trained_tree)
-            if error_rate < local_error_rate:
+                    training_set.extend(validation_and_training_set[y]) #Use extend to flatten the list.
+            trained_tree = decision_tree_learning(training_set, 0)[0] #Train the model with the training set.
+            #visualize_tree(trained_tree, 0)
+            error_rate = 1 - evaluate(validation_set, trained_tree) #Evaluate the performance using the validation set.
+            if error_rate < local_error_rate: #Choose the tree with the lowest error rate.
                 local_error_rate = error_rate
                 best_trained_tree = trained_tree
-        global_error_rate += (1-evaluate(test_set, best_trained_tree))
-    return global_error_rate/10
+            print("Validation set "+str(x)+": "+str(error_rate));
+            print(cal_confusion_matrix(validation_set, best_trained_tree));
+        error = 1-evaluate(test_set, best_trained_tree)
+        print("error rate: "+str(error))
+        global_error_rate += error #Get the error rate from the test set.
+    return global_error_rate/10 #Average error rate.
 
 def evaluate(dataset, trained_tree):
     confusion_matrix = cal_confusion_matrix(dataset, trained_tree) # Calculate confusion matrix
@@ -213,16 +217,22 @@ def cal_f1(recall_rates, prediction_rates): # This function takes in output from
 def cal_avg_classification_rate(confusion_matrix):
     classif_rates = [0,0,0,0] # Array for storing the classification rates of each class
 
-    all_trues = [confusion_matrix[i][i] for i in range(4)]
-
+    tp = 0;
+    tn = 0;
+    fn = 0;
+    fp = 0;
     for i in range(4):
-        tp = confusion_matrix[i][i] # Number of True Positive(TP)
-        tn = sum(all_trues) - tp # Number of True Negative(TN)
-        fn = sum(confusion_matrix[i]) - tp # Number of False Negative(FN)
-        fp = sum([confusion_matrix[n][i] for n in range(4)]) - tp # Number of False Positive(FP)
-        classif_rates[i] = (tp + tn) / (tp + tn + fn + fp)
-
-    return sum(classif_rates) / len(classif_rates)
+        for j in range(4):
+            if i == j:
+                if i == 1:
+                    tp += confusion_matrix[i][j]
+                else:
+                    tn += confusion_matrix[i][j]
+            elif j == 1:
+                fp += confusion_matrix[i][j]
+            else:
+                fn += confusion_matrix[i][j]
+    return (tp + tn)/(tp + tn + fp + fn)
 
 def write_report(dataset, trained_tree): # Not sure where this goes (Please delete if not needed)
     confusion_matrix = cal_confusion_matrix(dataset, trained_tree) # Calculate confusion matrix
