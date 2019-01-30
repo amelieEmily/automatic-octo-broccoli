@@ -125,21 +125,31 @@ def find_label(data, node): # Given a row of data, predict the label it have fro
         return find_label(data, node.rChild)
 
 def cal_recall_rates(confusion_matrix):
-    recalls = [0,0,0,0] # Array for storing the recall value of each class
+    recalls = [0,0,0,0] # Array for storing the recall rates of each class
 
     for i in range(4):
         tp = confusion_matrix[i][i] # Number of True Positive(TP)
         all_actual = sum(confusion_matrix[i]) # This should equal to TP + FN (total number of values equajs to label of index i actually occur in test_db)
-        recalls[i] = tp / all_actual # Calculate the recall for class at index i
+        recalls[i] = tp / all_actual # Calculate the recall rate for class at index i
 
     return recalls
 
 def cal_prediction_rates(confusion_matrix):
-    predictions = [0,0,0,0] # Array for storing the recall value of each class
+    predictions = [0,0,0,0] # Array for storing the prediction rates of each class
 
     for i in range(4):
         tp = confusion_matrix[i][i] # Number of True Positive(TP)
         all_predictions = sum([confusion_matrix[n][i] for n in range(4)]) # This should equal to TP + FP (total number of values equajs to label of index i that is predicted)
-        predictions[i] = tp / all_predictions # Calculate the recall for class at index i
+        predictions[i] = tp / all_predictions # Calculate the prediction rate for class at index i
 
     return predictions
+
+def cal_f1(recall_rates, prediction_rates): # This function takes in output from cal_recall_rates and cal_prediction_rates
+    f1s = [0,0,0,0]
+
+    for i in range(4):
+        recall = recall_rates[i]
+        prediction = prediction_rates[i]
+        f1s[i] = 2 * (recall * prediction) / (recall + prediction)
+
+    return f1s
