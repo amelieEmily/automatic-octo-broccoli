@@ -94,3 +94,32 @@ def visualize_tree(node, depth):
             visualize_tree(node.rChild, depth+1)
     if node.lChild == None and node.rChild == None:
         print(depth*'  '+"*LEAF NODE*")
+
+def cal_confusion_matrix(test_db,trained_tree):
+    confusion = np.zeros((4,4), dtype=np.int) # Create a 4x4 matrix
+    #   Structure of the confusion matrix (A 4x4 2D array)
+    #           1.0 [[ 0,   0,   0,   0 ]
+    #  actual   2.0  [ 0,   0,   0,   0 ]
+    #  values   3.0  [ 0,   0,   0,   0 ]
+    #           4.0  [ 0,   0,   0,   0 ]]
+    #                 1.0  2.0  3.0  4.0
+    #                  predicted values
+    labels = [1.0, 2.0, 3.0, 4.0] # Assume the labels to be 1.0, 2.0, 3.0, 4.0 (from the dataset, NOT SURE)
+
+    for data in test_db:
+        prediction = find_label(data, trained_tree)  #Find the predicted label with the tree
+        actual = data[-1]  # The last column is the actual label
+        index_actual = labels.index(actual) # Find the index of the actual value in the matrix
+        index_predict = labels.index(prediction) # Find the index of the predicted value in the matrix
+        confusion[index_actual][index_predict] += 1 # Add one to the correspondind field in the confusion_matrix
+
+    return confusion
+
+
+def find_label(data, node): # Given a row of data, predict the label it have from the tree node
+    if node.nodeValue[0] == -1: # If the node is a leaf node, return label
+        return node.nodeValue[1]
+    if data[node.nodeValue[0]] < node.nodeValue[1]: # If value at column smaller than split value, recurse on lChild
+        return find_label(data, node.lChild)
+    else: # If value at column larger than split value, recurse on rChild
+        return find_label(data, node.rChild)
