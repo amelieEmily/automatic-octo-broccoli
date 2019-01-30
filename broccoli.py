@@ -117,16 +117,41 @@ def get_folds(dataset_in_folds, folds_num): #Return folds whose index is given a
         folds.extend(dataset_in_folds[num])
     return folds
 
-def evaluate(test_db, trained_tree):
-    # Perform 10-fold cross validation.
-    
+def ten_cross_validation(dataset):
+    test_set = []
+    dataset_in_folds = divide_set_into_folds(dataset, 10)
+    global_error_rate = 0
+    for i in range(10):
+        print("Test set "+str(i))
+        test_set = dataset_in_folds[i]
+        validation_and_training_set = []
+        validation_set = []
+        training_set = []
+        best_trained_tree = None
+        for z in range(10):
+            if (z != i):
+                validation_and_training_set.append(dataset_in_folds[z])
+        for x in range(9):
+            validation_set = validation_and_training_set[x]
+            local_error_rate = 1
+            for y in range(9):
+                if (y != x):
+                    training_set.extend(validation_and_training_set[y])
+            trained_tree = decision_tree_learning(training_set, 0)[0]
+            print("Validation set "+str(i))
+            visualize_tree(trained_tree, 0)
+            error_rate = evaluate(validation_set, trained_tree)
+            if error_rate < local_error_rate:
+                local_error_rate = error_rate
+                best_trained_tree = trained_tree
+        global_error_rate += (1-evaluate(test_set, best_trained_tree))
+    return global_error_rate/10
 
-
-
-    confusion_matrix = cal_confusion_matrix(test_db, trained_tree) # Calculate confusion matrix
+def evaluate(dataset, trained_tree):
+    confusion_matrix = cal_confusion_matrix(dataset, trained_tree) # Calculate confusion matrix
     return cal_avg_classification_rate(confusion_matrix) # Return average classification rate
 
-def cal_confusion_matrix(test_db,trained_tree):
+def cal_confusion_matrix(dataset,trained_tree):
     confusion = np.zeros((4,4), dtype=np.int) # Create a 4x4 matrix
     #   Structure of the confusion matrix (A 4x4 2D array)
     #           1.0 [[ 0,   0,   0,   0 ]
@@ -137,7 +162,7 @@ def cal_confusion_matrix(test_db,trained_tree):
     #                  predicted values
     labels = [1.0, 2.0, 3.0, 4.0] # Assume the labels to be 1.0, 2.0, 3.0, 4.0 (from the dataset, NOT SURE)
 
-    for data in test_db:
+    for data in dataset:
         prediction = find_label(data, trained_tree)  #Find the predicted label with the tree
         actual = data[-1]  # The last column is the actual label
         index_actual = labels.index(actual) # Find the index of the actual value in the matrix
@@ -160,7 +185,7 @@ def cal_recall_rates(confusion_matrix):
 
     for i in range(4):
         tp = confusion_matrix[i][i] # Number of True Positive(TP)
-        all_actual = sum(confusion_matrix[i]) # This should equal to TP + FN (total number of values equajs to label of index i actually occur in test_db)
+        all_actual = sum(confusion_matrix[i]) # This should equal to TP + FN (total number of values equajs to label of index i actually occur in dataset)
         recalls[i] = tp / all_actual # Calculate the recall rate for class at index i
 
     return recalls
@@ -199,8 +224,8 @@ def cal_avg_classification_rate(confusion_matrix):
 
     return sum(classif_rates) / len(classif_rates)
 
-def write_report(test_db, trained_tree): # Not sure where this goes (Please delete if not needed)
-    confusion_matrix = cal_confusion_matrix(test_db, trained_tree) # Calculate confusion matrix
+def write_report(dataset, trained_tree): # Not sure where this goes (Please delete if not needed)
+    confusion_matrix = cal_confusion_matrix(dataset, trained_tree) # Calculate confusion matrix
     print("Confusion Matrix: ")
     print(confusion_matrix)
 
