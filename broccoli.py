@@ -12,6 +12,8 @@ class TreeNode:
         self.rChild = rc
     def __str__(self):
         return str(self.nodeValue)
+    def is_node(self):
+        return self.lChild == None && self.rChild == None
 
 def decision_tree_learning(dataset, depth):
     if len(set([data[-1] for data in dataset])) == 1:         #check the last column(labels) and if all of them are samely labeled, return this dataset as a leaf
@@ -154,6 +156,28 @@ def ten_cross_validation(dataset):
 def evaluate(dataset, trained_tree):
     confusion_matrix = cal_confusion_matrix(dataset, trained_tree) # Calculate confusion matrix
     return cal_avg_classification_rate(confusion_matrix) # Return average classification rate
+
+def purning(dataset, root_node):
+    nodes = [root_node]
+    while nodes:
+        node = nodes.pop()
+        if node.lChild.is_node() && node.rChild.is_node():
+            original = evaluate(dataset, root_node) # Calculate the classification rate of the original tree
+            lChild = node.lChild # Store the Child nodes
+            rChild = node.rChild
+            node.lChild = None # Set the child nodes to None, i.e. replacn the whole thing with a single node
+            node.rChild = None
+            new = evaluate(dataset, root_node) # Calculate the new classification rate
+            if original > new: # If classification rate of original tree is higher, set back the child nodes
+                node.lChild = lChild
+                node.rChild = rChild
+        else:
+            if node.lChild:
+                nodes.append(node.lChild)
+            if node.rChild:
+                nodes.append(node.rChild)
+    return root_node # Return back the modified tree
+
 
 def cal_confusion_matrix(dataset,trained_tree):
     confusion = np.zeros((4,4), dtype=np.int) # Create a 4x4 matrix
