@@ -12,8 +12,8 @@ class TreeNode:
         self.rChild = rc
     def __str__(self):
         return str(self.nodeValue)
-    def is_node(self):
-        return self.lChild == None && self.rChild == None
+    def is_leaf(self):
+        return self.lChild == None and self.rChild == None
 
 def decision_tree_learning(dataset, depth):
     if len(set([data[-1] for data in dataset])) == 1:         #check the last column(labels) and if all of them are samely labeled, return this dataset as a leaf
@@ -143,6 +143,13 @@ def ten_cross_validation(dataset):
             trained_tree = decision_tree_learning(training_set, 0)[0] #Train the model with the training set.
             #visualize_tree(trained_tree, 0)
             error_rate = 1 - evaluate(validation_set, trained_tree) #Evaluate the performance using the validation set.
+            ##### Test for pruning ######
+            # new_root = decision_tree_learning(training_set, 0)[0]
+            # new_tree = pruning(validation_set, new_root)
+            # print(equal_trees(trained_tree, new_tree))
+            # print("old error_rate" + str(error_rate))
+            # print("new error_rate" + str(1 - evaluate(validation_set, new_tree)))
+            ##### End test for pruning ######
             if error_rate < local_error_rate: #Choose the tree with the lowest error rate.
                 local_error_rate = error_rate
                 best_trained_tree = trained_tree
@@ -157,25 +164,46 @@ def evaluate(dataset, trained_tree):
     confusion_matrix = cal_confusion_matrix(dataset, trained_tree) # Calculate confusion matrix
     return cal_avg_classification_rate(confusion_matrix) # Return average classification rate
 
-def purning(dataset, root_node):
-    nodes = [root_node]
+def flatten(node, depth): # Helper fukction for adding all tree nodes into a list
+    list = []
+    list.append((node, depth))
+    if node.lChild and (node.lChild is not None):
+        list = list + flatten(node.lChild, depth + 1)
+    if node.rChild and (node.rChild is not None):
+        list = list + flatten(node.rChild, depth + 1)
+    return list
+
+def getKey(item): # Helper function for sorting
+    return item[1]
+
+def pruning(validation_set, root_node):
+    nodes = sorted(flatten(root_node, 0), key=getKey, reverse=True)
     while nodes:
-        node = nodes.pop()
-        if node.lChild.is_node() && node.rChild.is_node():
-            original = evaluate(dataset, root_node) # Calculate the classification rate of the original tree
+        node = nodes.pop()[0]
+        if node.is_leaf():
+            continue
+        if node.lChild.is_leaf() and node.rChild.is_leaf():
+            original = evaluate(validation_set, root_node) # Calculate the classification rate of the original tree
             lChild = node.lChild # Store the Child nodes
             rChild = node.rChild
+            ori_value = node.nodeValue
             node.lChild = None # Set the child nodes to None, i.e. replacn the whole thing with a single node
             node.rChild = None
-            new = evaluate(dataset, root_node) # Calculate the new classification rate
-            if original > new: # If classification rate of original tree is higher, set back the child nodes
+
+            node.nodeValue = lChild.nodeValue # Substitude with left child
+            newl = evaluate(validation_set, root_node) # Calculate the new classification rate
+
+            node.nodeValue = rChild.nodeValue # Substitude with right child
+            newr = evaluate(validation_set, root_node) # Calculate the new classification rate
+            if (original > newl) and (original > newr) : # If classification rate of original tree is higher, set back the child nodes and node value
                 node.lChild = lChild
                 node.rChild = rChild
-        else:
-            if node.lChild:
-                nodes.append(node.lChild)
-            if node.rChild:
-                nodes.append(node.rChild)
+                node.nodeValue = ori_value
+            else:
+                # print("pruned")
+                if newl > newr: # If classification rate of original tree is higher, substitude with left child
+                    node.nodeValue = lChild.nodeValue
+
     return root_node # Return back the modified tree
 
 
@@ -278,3 +306,12 @@ def write_report(dataset, trained_tree): # Not sure where this goes (Please dele
     avg_clasif_rate = cal_avg_classification_rate(confusion_matrix) # Calculate average classification rate
     print("Average classification rate: ")
     print(avg_clasif_rate)
+
+def equal_trees(node1, node2):
+    if node1 is None and node2 is None:
+        return True
+    if node1 is None or node2 is None:
+        return False
+    if node1.nodeValue != node2.nodeValue:
+        return False
+    return equal_trees(node1.lChild, node2.lChild) and equal_trees(node1.rChild, node2.rChild)
