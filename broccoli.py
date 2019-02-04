@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import copy
 from random import shuffle
 
 clean = np.loadtxt("co395-cbc-dt/wifi_db/clean_dataset.txt", usecols= (0, 1, 2, 3, 4, 5, 6, 7), unpack= False)
@@ -24,24 +25,45 @@ def decision_tree_learning(dataset, depth):
         return (TreeNode((-1, dataset[0][COL_OF_LABELS]), None, None), depth)
     else:
         node = find_split(dataset)
+        if node == None:
+            count = [0,0,0,0]
+            for datum in dataset:
+                count[int(datum[-1].item())-1] += 1
+            return (TreeNode((-1, count.index(max(count))+1), None, None), depth)
         temp = list(dataset)
         dataset = np.array(sorted(temp, key = lambda x:(x[node[0]], x[COL_OF_LABELS]))) #Sort the dataset w.r.t the column's value of every datum.
         (l_dataset, r_dataset) = split_set(dataset, node[1], node[0])
-        (l_branch, l_depth) = decision_tree_learning(l_dataset, depth + 1)
-        (r_branch, r_depth) = decision_tree_learning(r_dataset, depth + 1)
-        return (TreeNode(node, l_branch, r_branch), max(l_depth, r_depth))
+        if(len(l_dataset)!= 0 and len(r_dataset)!=0):
+            (l_branch, l_depth) = decision_tree_learning(l_dataset, depth + 1)
+            (r_branch, r_depth) = decision_tree_learning(r_dataset, depth + 1)
+            return (TreeNode(node, l_branch, r_branch), max(l_depth, r_depth))
+        elif len(l_dataset)== 0:
+            (r_branch, r_depth) = decision_tree_learning(r_dataset, depth + 1)
+            return (TreeNode(node, None, r_branch), r_depth)
+        else:
+            (l_branch, l_depth) = decision_tree_learning(l_dataset, depth + 1)
+            return (TreeNode(node, l_branch, None), l_depth)
 
 def find_split(dataset): #returns a treeNode with the splitting column and the splitting point stored
     column_length = len(dataset[0]) - 1 #Avoid splitting the last column: the answer column.
     max_gain = 0
     max_gain_split_value = 0
     column_no = 0
+    split_exist = False
     for column in range(column_length):
-         (max_gain_col, max_gain_split_point_col) = find_split_point_for_column(dataset, column)
-         if (max_gain_col > max_gain): #Find the maximum gain and the corresponding split point among all column's maximum gain.
-             max_gain = max_gain_col
-             max_gain_split_value = max_gain_split_point_col
-             column_no = column
+         if (len(dataset) != 0):
+             max_gain_col = 0
+             max_gain_split_point_col = 0
+             result = find_split_point_for_column(dataset, column)
+             if result != None:
+                 split_exist = True
+                 (max_gain_col, max_gain_split_point_col) = result
+             if (max_gain_col > max_gain): #Find the maximum gain and the corresponding split point among all column's maximum gain.
+                 max_gain = max_gain_col
+                 max_gain_split_value = max_gain_split_point_col
+                 column_no = column
+    if not split_exist:
+        return None
     return (column_no, max_gain_split_value)
 
 def find_split_point_for_column(dataset, column): #return the best gaining splitting point and its gain of this column in tuples.
@@ -50,16 +72,18 @@ def find_split_point_for_column(dataset, column): #return the best gaining split
     biggest_gain = 0 #Store the biggest gain and the corresponding split point.
     biggest_gain_splitting_point = 0
     row_length = len(dataset)
+    split_exist = False
     for num in range(row_length - 1): #Compare two adjacent data and find split point with the biggest gain.
         if ((dataset[num][COL_OF_LABELS] != dataset[num + 1][COL_OF_LABELS]) and (dataset[num][column] != dataset[num + 1][column])): #Find a split point.
+            split_exist = True
             split_point = dataset[num + 1][column]
             (set_left, set_right) = split_set(dataset, split_point, column)
             gain = calculate_gain(dataset, set_left, set_right)
-            if (len(set_left) == 0 or len(set_right) == 0):
-                gain = 0
             if biggest_gain < gain:
                 biggest_gain = gain
                 biggest_gain_splitting_point = split_point
+    if not split_exist:
+        return None
     return (biggest_gain, biggest_gain_splitting_point)
 
 def split_set(data, split_value, column): #Split a set w.r.t to a split point.
@@ -124,15 +148,17 @@ def get_folds(dataset_in_folds, folds_num): #Return folds whose index is given a
     return folds
 
 def ten_cross_validation(dataset):
-    np.random.shuffle(dataset)
     test_set = []
-    dataset_in_folds = divide_set_into_folds(dataset, NUM_OF_FOLDS) #Divide the dataset into 10 folds.
+    np.random.shuffle(dataset)
     global_error_rate = 0
+    pruned_global_error_rate = 0
     for i in range(NUM_OF_FOLDS): #let Test_set be different fold every time.
+        dataset_in_folds = divide_set_into_folds(dataset, NUM_OF_FOLDS) #Divide the dataset into 10 folds.
         print("Test set " + str(i))
         test_set = dataset_in_folds[i]
         validation_and_training_set = []
         best_trained_tree = None
+        best_trained_pruned_tree = None
         for z in range(NUM_OF_FOLDS): #This mainly splits the whole set into test set and the rest, which is validation set and training set.
             if (z != i):
                 validation_and_training_set.append(dataset_in_folds[z])
@@ -140,6 +166,7 @@ def ten_cross_validation(dataset):
             training_set = []
             validation_set = validation_and_training_set[x]
             lowest_error_rate = 1
+            lowest_pruned_error_rate = 1
             for y in range(NUM_OF_FOLDS - 1): #Splits the validation_and_training_set into validation and training set individually.
                 if (y != x):
                     training_set.extend(validation_and_training_set[y]) #Use extend to flatten the list.
@@ -147,21 +174,27 @@ def ten_cross_validation(dataset):
             #visualize_tree(trained_tree, 0)
             error_rate = 1 - evaluate(validation_set, trained_tree) #Evaluate the performance using the validation set.
             ##### Test for pruning ######
-            pruned_tree = pruning(validation_set, trained_tree)
             # print(equal_trees(trained_tree, new_tree))
-            print("old error_rate" + str(error_rate))
-            error_rate = 1 - evaluate(validation_set, pruned_tree)
-            print("new error_rate" + str(error_rate))
+            #print("old error_rate" + str(error_rate))
+            pruned_tree = pruning(validation_set, trained_tree)
+            pruned_error_rate = 1 - evaluate(validation_set, pruned_tree)
+            #print("new error_rate" + str(error_rate))
             ##### End test for pruning ######
             if error_rate < lowest_error_rate: #Choose the tree with the lowest error rate.
                 lowest_error_rate = error_rate
-                best_trained_tree = pruned_tree
-            print("Validation set " + str(x)+ ": " + str(error_rate));
-            print(cal_confusion_matrix(validation_set, best_trained_tree));
+                lowest_pruned_error_rate = pruned_error_rate
+                best_trained_tree = trained_tree
+                best_trained_pruned_tree = pruned_tree
+            print("Validation set " + str(x));
         error = 1 - evaluate(test_set, best_trained_tree)
-        print("error rate: " + str(error))
+        print("Unpruned Error Rate" + str(error))
+        print(cal_confusion_matrix(test_set, best_trained_tree));
+        pruned_error = 1 - evaluate(test_set, best_trained_pruned_tree)
+        print("Pruned Error Rate" + str(pruned_error))
+        print(cal_confusion_matrix(test_set, best_trained_pruned_tree));
         global_error_rate += error #Get the error rate from the test set.
-    return global_error_rate / 10 #Average error rate.
+        pruned_global_error_rate += pruned_error
+    return (global_error_rate / 10, pruned_global_error_rate/10) #Average error rate.
 
 def evaluate(dataset, trained_tree):
     confusion_matrix = cal_confusion_matrix(dataset, trained_tree) # Calculate confusion matrix
@@ -170,16 +203,17 @@ def evaluate(dataset, trained_tree):
 def flatten(tree, depth): # Helper fukction for adding all tree nodes into a list
     list = []
     list.append((tree, depth))
-    if node.lChild and (tree.lChild is not None):
+    if tree.lChild and (tree.lChild is not None):
         list = list + flatten(tree.lChild, depth + 1)
-    if node.rChild and (tree.rChild is not None):
+    if tree.rChild and (tree.rChild is not None):
         list = list + flatten(tree.rChild, depth + 1)
     return list
 
 def getKey(tuple): # Helper function for sorting
     return tuple[1]
 
-def pruning(validation_set, decision_tree):
+def pruning(validation_set, origin_decision_tree):
+    decision_tree = copy.deepcopy(origin_decision_tree)
     nodes = sorted(flatten(decision_tree, 0), key=getKey, reverse=True)
     while nodes:
         node = nodes.pop()[0]
@@ -190,10 +224,10 @@ def pruning(validation_set, decision_tree):
             lChild = node.lChild # Store the Child nodes
             rChild = node.rChild
             ori_value = node.nodeValue
-            node.lChild = None # Set the child nodes to None, i.e. replacn the whole thing with a single node
+            node.lChild = None # Set the child nodes to None, i.e. replace the whole thing with a single node
             node.rChild = None
 
-            node.nodeValue = lChild.nodeValue # Substitude with left child
+            node.nodeValue = lChild.nodeValue # Substitute with left child
             newl = evaluate(validation_set, decision_tree) # Calculate the new classification rate
 
             node.nodeValue = rChild.nodeValue # Substitude with right child
@@ -203,11 +237,8 @@ def pruning(validation_set, decision_tree):
                 node.rChild = rChild
                 node.nodeValue = ori_value
             else:
-                # print("pruned")
                 if newl > newr: # If classification rate of original tree is lower, substitude with left child/right child
                     node.nodeValue = lChild.nodeValue
-                else:
-                    node.nodeValue = rChild.nodeValue
     return decision_tree # Return back the modified tree
 
 def cal_confusion_matrix(dataset,trained_tree):
