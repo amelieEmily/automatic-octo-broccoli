@@ -150,8 +150,17 @@ def get_folds(dataset_in_folds, folds_num): #Return folds whose index is given a
 def ten_cross_validation(dataset):
     test_set = []
     np.random.shuffle(dataset)
-    global_error_rate = 0
-    pruned_global_error_rate = 0
+    average_error_rate = 0
+    average_confusion_matrix = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
+    average_precision = 0
+    average_recall = 0
+    average_f1 = 0
+    pruned_average_error_rate = 0
+    pruned_average_confusion_matrix = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
+    pruned_average_precision = 0
+    pruned_average_recall = 0
+    pruned_average_f1 = 0
+
     for i in range(NUM_OF_FOLDS): #let Test_set be different fold every time.
         dataset_in_folds = divide_set_into_folds(dataset, NUM_OF_FOLDS) #Divide the dataset into 10 folds.
         print("Test set " + str(i))
@@ -159,14 +168,14 @@ def ten_cross_validation(dataset):
         validation_and_training_set = []
         best_trained_tree = None
         best_trained_pruned_tree = None
+        lowest_error_rate = 1
+        lowest_pruned_error_rate = 1
         for z in range(NUM_OF_FOLDS): #This mainly splits the whole set into test set and the rest, which is validation set and training set.
             if (z != i):
                 validation_and_training_set.append(dataset_in_folds[z])
         for x in range(NUM_OF_FOLDS - 1): #Switch validation set each time.
             training_set = []
             validation_set = validation_and_training_set[x]
-            lowest_error_rate = 1
-            lowest_pruned_error_rate = 1
             for y in range(NUM_OF_FOLDS - 1): #Splits the validation_and_training_set into validation and training set individually.
                 if (y != x):
                     training_set.extend(validation_and_training_set[y]) #Use extend to flatten the list.
@@ -188,20 +197,76 @@ def ten_cross_validation(dataset):
                 best_trained_tree = trained_tree
                 best_trained_pruned_tree = pruned_tree
             print("Validation set " + str(x));
-        test_unpruned_confusion_matrix_data = cal_confusion_matrix(test_set, best_trained_tree, verbose = True);
+
+        print("Unpruned Confusion Matrix: ")
+        test_unpruned_confusion_matrix_data = cal_confusion_matrix(test_set, best_trained_tree, True);
         error = 1 - cal_avg_classification_rate(test_unpruned_confusion_matrix_data)
-        print("Unpruned Error Rate" + str(error))
+        print("Unpruned Error Rate: " + str(error))
+        print("Unpruned Classification Rate: " + str(1-error))
+        precisions = cal_precision_rates(test_unpruned_confusion_matrix_data)
+        print("Unpruned Precision: " + str(precisions))
+        recall = cal_recall_rates(test_unpruned_confusion_matrix_data)
+        print("Unpruned Recall: " + str(recall))
+        f1 = cal_f1(recall, precisions)
+        print("Unpruned F1-Measure: " + str(f1))
         print("Unpruned Tree Node Count: "+ str(node_count(best_trained_tree)))
+        average_error_rate += error #Get the error rate from the test set.
+        average_confusion_matrix = matrix_addition(average_confusion_matrix, test_unpruned_confusion_matrix_data[4])
+        average_precision += precisions
+        average_recall += recall
+        average_f1 += f1
+
+        print("Pruned Confusion Matrix: ")
         test_pruned_confusion_matrix_data = cal_confusion_matrix(test_set, best_trained_pruned_tree, True);
         pruned_error = 1 - cal_avg_classification_rate(test_pruned_confusion_matrix_data)
         print("Pruned Error Rate" + str(pruned_error))
+        print("Pruned Classification Rate: " + str(1-pruned_error))
+        pruned_precisions = cal_precision_rates(test_pruned_confusion_matrix_data)
+        print("Pruned Precision: " + str(pruned_precisions))
+        pruned_recall = cal_recall_rates(test_pruned_confusion_matrix_data)
+        print("Pruned Recall: " + str(pruned_recall))
+        pruned_f1 = cal_f1(pruned_recall, pruned_precisions)
+        print("Pruned F1-Measure: " + str(pruned_f1))
         print("Pruned Tree Node Count: "+ str(node_count(best_trained_pruned_tree)))
-        global_error_rate += error #Get the error rate from the test set.
-        pruned_global_error_rate += pruned_error
-    return (global_error_rate / 10, pruned_global_error_rate/10) #Average error rate.
+        pruned_average_error_rate += pruned_error #Get the error rate from the test set.
+        pruned_average_confusion_matrix = matrix_addition(pruned_average_confusion_matrix, test_pruned_confusion_matrix_data[4])
+        pruned_average_precision += pruned_precisions
+        pruned_average_recall += pruned_recall
+        pruned_average_f1 += pruned_f1
 
-def cal_avg_classification_rate(confusion_matrix_data):
-    return cal_avg_classification_rate(confusion_matrix_data) # Return average classification rate
+    print("Final Result:")
+
+    print("Unpruned average Confusion Matrix: "+str(matrix_division(average_confusion_matrix, 10)))
+    print("Unpruned average Error Rate" + str(average_error_rate/10))
+    print("Unpruned average Classification Rate: " + str(1-average_error_rate/10))
+    print("Unpruned average Precision: " + str(average_precision/10))
+    print("Unpruned average Recall: " + str(average_recall/10))
+    print("Unpruned average F1-Measure: " + str(average_f1/10))
+
+    print("Pruned average Confusion Matrix: "+str(matrix_division(pruned_average_confusion_matrix, 10)))
+    print("Pruned average Error Rate" + str(pruned_average_error_rate/10))
+    print("Pruned average Classification Rate: " + str(1-pruned_average_error_rate/10))
+    print("Pruned average Precision: " + str(pruned_average_precision/10))
+    print("Pruned average Recall: " + str(pruned_average_recall/10))
+    print("Pruned average F1-Measure: " + str(pruned_average_f1/10))
+
+#    return (average_error_rate / 10, pruned_average_error_rate/10) #Average error rate.
+
+def matrix_addition(matrix1, matrix2):
+    matrix = matrix1
+    for i in range (len(matrix1)):
+        for j in range(len(matrix1[0])):
+            matrix[i][j] += matrix2[i][j]
+    return matrix
+
+def matrix_division(matrix1, numerator):
+    matrix = matrix1
+    for i in range (len(matrix1)):
+        for j in range(len(matrix1[0])):
+            matrix[i][j] /= numerator
+    return matrix
+
+
 
 def flatten(tree, depth): # Helper fukction for adding all tree nodes into a list
     list = []
@@ -285,7 +350,7 @@ def cal_confusion_matrix(dataset, trained_tree, verbose):
             else:
                 fn += confusion_matrix[i][j]
 
-    return (tp, tn, fp, fn)
+    return (tp, tn, fp, fn, confusion_matrix)
 
 
 def find_label(data, node): # Given a row of data, predict the label it have from the tree node
@@ -301,7 +366,7 @@ def cal_recall_rates(confusion_matrix_data):
     fn = confusion_matrix_data[3]
     return tp / (tp + fn)
 
-def cal_precision_rates(confusion_matrix):
+def cal_precision_rates(confusion_matrix_data):
     tp = confusion_matrix_data[0]
     fp = confusion_matrix_data[2]
     return tp / (tp + fp)
@@ -317,25 +382,25 @@ def cal_avg_classification_rate(confusion_matrix_data):
     return (tp + tn) / (tp + tn + fp + fn)
 
 def performance_report(dataset, trained_tree): # Not sure where this goes (Please delete if not needed)
-    confusion_matrix = cal_confusion_matrix(dataset, trained_tree) # Calculate confusion matrix
     print("Confusion Matrix: ")
-    print(confusion_matrix)
+    confusion_matrix_data = cal_confusion_matrix(dataset, trained_tree, True) # Calculate confusion matrix
 
-    recalls = cal_recall_rates(confusion_matrix) # Calculate recall rates
+    recalls = cal_recall_rates(confusion_matrix_data) # Calculate recall rates
     print("Recall rates: ")
     print(recalls)
 
-    predictions = cal_precision_rates(confusion_matrix) # Calculate prediction rates
-    print("Prediction rates: ")
-    print(predictions)
+    precisions = cal_precision_rates(confusion_matrix_data) # Calculate prediction rates
+    print("Precisions rates: ")
+    print(precisions)
 
-    f1s = cal_f1(recalls, predictions) # Calculate F1 measures
+    f1s = cal_f1(recalls, precisions) # Calculate F1 measures
     print("F1 measures: ")
     print(f1s)
 
-    avg_clasif_rate = cal_avg_classification_rate(confusion_matrix) # Calculate average classification rate
+    avg_clasif_rate = cal_avg_classification_rate(confusion_matrix_data) # Calculate average classification rate
     print("Average classification rate: ")
     print(avg_clasif_rate)
+    print(" ")
 
 def equal_trees(node1, node2):
     if node1 is None and node2 is None:
