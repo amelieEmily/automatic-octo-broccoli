@@ -147,6 +147,56 @@ def get_folds(dataset_in_folds, folds_num): #Return folds whose index is given a
         folds.extend(dataset_in_folds[num])
     return folds
 
+def ten_cross_validation2(dataset):
+    test_set = []
+    lowest_error_rate = 1
+    np.random.shuffle(dataset)
+    global_error_rate = 0
+    pruned_global_error_rate = 0
+    best_trained_tree = None
+    for i in range(NUM_OF_FOLDS): #let Test_set be different fold every time.
+        dataset_in_folds = divide_set_into_folds(dataset, NUM_OF_FOLDS) #Divide the dataset into 10 folds.
+        print("Test set " + str(i))
+        test_set = dataset_in_folds[i]
+        validation_and_training_set = []
+        validation_and_training_set_flattened = []
+
+        best_trained_pruned_tree = None
+        lowest_pruned_error_rate = 1
+        for z in range(NUM_OF_FOLDS): #This mainly splits the whole set into test set and the rest, which is validation set and training set.
+            if (z != i):
+                validation_and_training_set.append(dataset_in_folds[z])
+                validation_and_training_set_flattened.extend(dataset_in_folds[z])
+        trained_tree = decision_tree_learning(validation_and_training_set_flattened, 0)[0] #Train the model with the training set.
+        test_unpruned_confusion_matrix_data = cal_confusion_matrix(test_set, trained_tree, verbose = True);
+        error = 1 - cal_avg_classification_rate(test_unpruned_confusion_matrix_data)
+        print("Unpruned Error Rate" + str(error))
+        print("Unpruned Tree Node Count: "+ str(node_count(trained_tree)))
+        if error < lowest_error_rate: #Choose the tree with the lowest error rate.
+            lowest_error_rate = error
+            best_trained_tree = trained_tree
+        for x in range(NUM_OF_FOLDS - 1): #Switch validation set each time.
+            training_set = []
+            validation_set = validation_and_training_set[x]
+            for y in range(NUM_OF_FOLDS - 1): #Splits the validation_and_training_set into validation and training set individually.
+                if (y != x):
+                    training_set.extend(validation_and_training_set[y]) #Use extend to flatten the list.
+            pre_prun_tree = decision_tree_learning(training_set, 0)[0]
+            pruned_tree = pruning(validation_set, pre_prun_tree)
+            confusion_matrix_data_for_pruned_tree = cal_confusion_matrix(validation_set, pruned_tree, False)
+            pruned_error_rate = 1 - cal_avg_classification_rate(confusion_matrix_data_for_pruned_tree)
+            if pruned_error_rate < lowest_pruned_error_rate:
+                lowest_pruned_error_rate = pruned_error_rate
+                best_trained_pruned_tree = pruned_tree
+            print("Validation set " + str(x));
+        test_pruned_confusion_matrix_data = cal_confusion_matrix(test_set, best_trained_pruned_tree, True);
+        pruned_error = 1 - cal_avg_classification_rate(test_pruned_confusion_matrix_data)
+        print("Pruned Error Rate" + str(pruned_error))
+        print("Pruned Tree Node Count: "+ str(node_count(best_trained_pruned_tree)))
+        global_error_rate += error #Get the error rate from the test set.
+        pruned_global_error_rate += pruned_error
+    return (global_error_rate / 10, pruned_global_error_rate/10) #Average error rate.
+
 def ten_cross_validation(dataset):
     test_set = []
     np.random.shuffle(dataset)
@@ -159,6 +209,8 @@ def ten_cross_validation(dataset):
         validation_and_training_set = []
         best_trained_tree = None
         best_trained_pruned_tree = None
+        lowest_error_rate = 1
+        lowest_pruned_error_rate = 1
         for z in range(NUM_OF_FOLDS): #This mainly splits the whole set into test set and the rest, which is validation set and training set.
             if (z != i):
                 validation_and_training_set.append(dataset_in_folds[z])
