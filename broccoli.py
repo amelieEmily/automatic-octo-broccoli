@@ -172,12 +172,14 @@ def ten_cross_validation(dataset):
                     training_set.extend(validation_and_training_set[y]) #Use extend to flatten the list.
             trained_tree = decision_tree_learning(training_set, 0)[0] #Train the model with the training set.
             #visualize_tree(trained_tree, 0)
-            error_rate = 1 - evaluate(validation_set, trained_tree) #Evaluate the performance using the validation set.
+            confusion_matrix_data_for_unpruned_tree = cal_confusion_matrix(validation_set, trained_tree, False)
+            error_rate = 1 - cal_avg_classification_rate(confusion_matrix_data_for_unpruned_tree) #cal_avg_classification_rate the performance using the validation set.
             ##### Test for pruning ######
             # print(equal_trees(trained_tree, new_tree))
             #print("old error_rate" + str(error_rate))
             pruned_tree = pruning(validation_set, trained_tree)
-            pruned_error_rate = 1 - evaluate(validation_set, pruned_tree)
+            confusion_matrix_data_for_pruned_tree = cal_confusion_matrix(validation_set, pruned_tree, False)
+            pruned_error_rate = 1 - cal_avg_classification_rate(confusion_matrix_data_for_pruned_tree)
             #print("new error_rate" + str(error_rate))
             ##### End test for pruning ######
             if error_rate < lowest_error_rate: #Choose the tree with the lowest error rate.
@@ -186,19 +188,20 @@ def ten_cross_validation(dataset):
                 best_trained_tree = trained_tree
                 best_trained_pruned_tree = pruned_tree
             print("Validation set " + str(x));
-        error = 1 - evaluate(test_set, best_trained_tree)
+        test_unpruned_confusion_matrix_data = cal_confusion_matrix(test_set, best_trained_tree, verbose = True);
+        error = 1 - cal_avg_classification_rate(test_unpruned_confusion_matrix_data)
         print("Unpruned Error Rate" + str(error))
-        print(cal_confusion_matrix(test_set, best_trained_tree));
-        pruned_error = 1 - evaluate(test_set, best_trained_pruned_tree)
+        print("Unpruned Tree Node Count: "+ str(node_count(best_trained_tree)))
+        test_pruned_confusion_matrix_data = cal_confusion_matrix(test_set, best_trained_pruned_tree, True);
+        pruned_error = 1 - cal_avg_classification_rate(test_pruned_confusion_matrix_data)
         print("Pruned Error Rate" + str(pruned_error))
-        print(cal_confusion_matrix(test_set, best_trained_pruned_tree));
+        print("Pruned Tree Node Count: "+ str(node_count(best_trained_pruned_tree)))
         global_error_rate += error #Get the error rate from the test set.
         pruned_global_error_rate += pruned_error
     return (global_error_rate / 10, pruned_global_error_rate/10) #Average error rate.
 
-def evaluate(dataset, trained_tree):
-    confusion_matrix = cal_confusion_matrix(dataset, trained_tree) # Calculate confusion matrix
-    return cal_avg_classification_rate(confusion_matrix) # Return average classification rate
+def cal_avg_classification_rate(confusion_matrix_data):
+    return cal_avg_classification_rate(confusion_matrix_data) # Return average classification rate
 
 def flatten(tree, depth): # Helper fukction for adding all tree nodes into a list
     list = []
@@ -220,7 +223,8 @@ def pruning(validation_set, origin_decision_tree):
         if node.is_leaf():
             continue
         if node.lChild.is_leaf() and node.rChild.is_leaf():
-            original = evaluate(validation_set, decision_tree) # Calculate the classification rate of the original tree
+            original_confusion_matrix_data = cal_confusion_matrix(validation_set, decision_tree, False)
+            original = cal_avg_classification_rate(original_confusion_matrix_data) # Calculate the classification rate of the original tree
             lChild = node.lChild # Store the Child nodes
             rChild = node.rChild
             ori_value = node.nodeValue
@@ -228,10 +232,13 @@ def pruning(validation_set, origin_decision_tree):
             node.rChild = None
 
             node.nodeValue = lChild.nodeValue # Substitute with left child
-            newl = evaluate(validation_set, decision_tree) # Calculate the new classification rate
+            left_confusion_matrix_data = cal_confusion_matrix(validation_set, decision_tree, False)
+            newl = cal_avg_classification_rate(left_confusion_matrix_data) # Calculate the new classification rate
 
             node.nodeValue = rChild.nodeValue # Substitude with right child
-            newr = evaluate(validation_set, decision_tree) # Calculate the new classification rate
+            right_confusion_matrix_data = cal_confusion_matrix(validation_set, decision_tree, False)
+            newr = cal_avg_classification_rate(right_confusion_matrix_data) # Calculate the new classification rate
+
             if (original > newl) and (original > newr) : # If classification rate of original tree is higher, set back the child nodes and node value
                 node.lChild = lChild
                 node.rChild = rChild
@@ -241,8 +248,8 @@ def pruning(validation_set, origin_decision_tree):
                     node.nodeValue = lChild.nodeValue
     return decision_tree # Return back the modified tree
 
-def cal_confusion_matrix(dataset,trained_tree):
-    confusion = np.zeros((NUM_OF_LABELS, NUM_OF_LABELS), dtype=np.int) # Create a NUM_OF_LABELSxNUM_OF_LABELS matrix
+def cal_confusion_matrix(dataset, trained_tree, verbose):
+    confusion_matrix = np.zeros((NUM_OF_LABELS, NUM_OF_LABELS), dtype=np.int) # Create a NUM_OF_LABELSxNUM_OF_LABELS matrix
     #   Structure of the confusion matrix (A 4x4 2D array)
     #           1.0 [[ 0,   0,   0,   0 ]
     #  actual   2.0  [ 0,   0,   0,   0 ]
@@ -257,52 +264,11 @@ def cal_confusion_matrix(dataset,trained_tree):
         actual = data[-1]  # The last column is the actual label
         index_actual = labels.index(actual) # Find the index of the actual value in the matrix
         index_predict = labels.index(prediction) # Find the index of the predicted value in the matrix
-        confusion[index_actual][index_predict] += 1 # Add one to the correspondind field in the confusion_matrix
+        confusion_matrix[index_actual][index_predict] += 1 # Add one to the corresponding field in the confusion_matrix
+    if verbose:
+        print(confusion_matrix)
 
-    return confusion
-
-
-def find_label(data, node): # Given a row of data, predict the label it have from the tree node
-    if node.nodeValue[0] == -1: # If the node is a leaf node, return label
-        return node.nodeValue[1]
-    if data[node.nodeValue[0]] < node.nodeValue[1]: # If value at column smaller than split value, recurse on lChild
-        return find_label(data, node.lChild)
-    else: # If value at column larger than split value, recurse on rChild
-        return find_label(data, node.rChild)
-
-def cal_recall_rates(confusion_matrix):
-    recalls = [0] * NUM_OF_LABELS # Array for storing the recall rates of each class
-
-    for i in range(NUM_OF_LABELS):
-        tp = confusion_matrix[i][i] # Number of True Positive(TP)
-        all_actual = sum(confusion_matrix[i]) # This should equal to TP + FN (total number of values equajs to label of index i actually occur in dataset)
-        recalls[i] = tp / all_actual # Calculate the recall rate for class at index i
-
-    return recalls
-
-def cal_prediction_rates(confusion_matrix):
-    predictions = [0] * NUM_OF_LABELS # Array for storing the prediction rates of each class
-
-    for i in range(NUM_OF_LABELS):
-        tp = confusion_matrix[i][i] # Number of True Positive(TP)
-        all_predictions = sum([confusion_matrix[n][i] for n in range(4)]) # This should equal to TP + FP (total number of values equajs to label of index i that is predicted)
-        predictions[i] = tp / all_predictions # Calculate the prediction rate for class at index i
-
-    return predictions
-
-def cal_f1(recall_rates, prediction_rates): # This function takes in output from cal_recall_rates and cal_prediction_rates
-    f1s = [0] * NUM_OF_LABELS # Array for storing the F1 measures of each class
-
-    for i in range(NUM_OF_LABELS):
-        recall = recall_rates[i]
-        prediction = prediction_rates[i]
-        f1s[i] = 2 * (recall * prediction) / (recall + prediction)
-
-    return f1s
-
-def cal_avg_classification_rate(confusion_matrix):
     classif_rates = [0] * NUM_OF_LABELS # Array for storing the classification rates of each class
-
     tp = 0
     tn = 0
     fn = 0
@@ -318,9 +284,39 @@ def cal_avg_classification_rate(confusion_matrix):
                 fp += confusion_matrix[i][j]
             else:
                 fn += confusion_matrix[i][j]
+
+    return (tp, tn, fp, fn)
+
+
+def find_label(data, node): # Given a row of data, predict the label it have from the tree node
+    if node.nodeValue[0] == -1: # If the node is a leaf node, return label
+        return node.nodeValue[1]
+    if data[node.nodeValue[0]] < node.nodeValue[1]: # If value at column smaller than split value, recurse on lChild
+        return find_label(data, node.lChild)
+    else: # If value at column larger than split value, recurse on rChild
+        return find_label(data, node.rChild)
+
+def cal_recall_rates(confusion_matrix_data):
+    tp = confusion_matrix_data[0]
+    fn = confusion_matrix_data[3]
+    return tp / (tp + fn)
+
+def cal_precision_rates(confusion_matrix):
+    tp = confusion_matrix_data[0]
+    fp = confusion_matrix_data[2]
+    return tp / (tp + fp)
+
+def cal_f1(recall_rates, precision_rates): # This function takes in output from cal_recall_rates and cal_precision_rates
+    return 2 * precision_rates * recall_rates / (recall_rates + precision_rates)
+
+def cal_avg_classification_rate(confusion_matrix_data):
+    tp = confusion_matrix_data[0]
+    tn = confusion_matrix_data[1]
+    fp = confusion_matrix_data[2]
+    fn = confusion_matrix_data[3]
     return (tp + tn) / (tp + tn + fp + fn)
 
-def write_report(dataset, trained_tree): # Not sure where this goes (Please delete if not needed)
+def performance_report(dataset, trained_tree): # Not sure where this goes (Please delete if not needed)
     confusion_matrix = cal_confusion_matrix(dataset, trained_tree) # Calculate confusion matrix
     print("Confusion Matrix: ")
     print(confusion_matrix)
@@ -329,7 +325,7 @@ def write_report(dataset, trained_tree): # Not sure where this goes (Please dele
     print("Recall rates: ")
     print(recalls)
 
-    predictions = cal_prediction_rates(confusion_matrix) # Calculate prediction rates
+    predictions = cal_precision_rates(confusion_matrix) # Calculate prediction rates
     print("Prediction rates: ")
     print(predictions)
 
@@ -349,3 +345,8 @@ def equal_trees(node1, node2):
     if node1.nodeValue != node2.nodeValue:
         return False
     return equal_trees(node1.lChild, node2.lChild) and equal_trees(node1.rChild, node2.rChild)
+
+def node_count(node):
+    if node is None:
+        return 0
+    return 1 + node_count(node.lChild) + node_count(node.rChild)
