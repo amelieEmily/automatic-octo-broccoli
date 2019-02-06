@@ -179,13 +179,11 @@ def ten_cross_validation_with_prun(dataset):
         print("Test set " + str(i))
         test_set = dataset_in_folds[i]
         validation_and_training_set = []
-        best_trained_pruned_tree = None
-        lowest_pruned_error_rate = 1
         for z in range(NUM_OF_FOLDS): #This mainly splits the whole set into test set and the rest, which is validation set and training set.
             if (z != i):
                 validation_and_training_set.append(dataset_in_folds[z])
         for x in range(NUM_OF_FOLDS - 1): #Switch validation set each time.
-            print("Validation set " + str(x));
+            #print("Validation set " + str(x));
             training_set = []
             validation_set = validation_and_training_set[x]
             for y in range(NUM_OF_FOLDS - 1): #Splits the validation_and_training_set into validation and training set individually.
@@ -193,20 +191,10 @@ def ten_cross_validation_with_prun(dataset):
                     training_set.extend(validation_and_training_set[y]) #Use extend to flatten the list.
             trained_tree = decision_tree_learning(training_set, 0)[0] #Train the model with the training set.
             pruned_tree = pruning(validation_set, trained_tree)
-            confusion_matrix_data_for_pruned_tree = cal_confusion_matrix(validation_set, pruned_tree, False)
-            pruned_error_rate = 1 - cal_avg_classification_rate(confusion_matrix_data_for_pruned_tree)
-            #print("new error_rate" + str(error_rate))
-            ##### End test for pruning ######
-            if pruned_error_rate < lowest_pruned_error_rate: #Choose the tree with the lowest error rate.
-                lowest_pruned_error_rate = pruned_error_rate
-                best_trained_pruned_tree = pruned_tree
-        print("Training Using Prunning:")
-        test_pruned_confusion_matrix_data = cal_confusion_matrix(test_set, best_trained_pruned_tree, True);
-        performance_report(test_pruned_confusion_matrix_data)
-        pruned_average_confusion_matrix = matrix_addition(pruned_average_confusion_matrix, test_pruned_confusion_matrix_data)
-
+            confusion_matrix_data_for_pruned_tree = cal_confusion_matrix(test_set, pruned_tree, False)
+            pruned_average_confusion_matrix = matrix_addition(pruned_average_confusion_matrix, confusion_matrix_data_for_pruned_tree)
     print("Final Average Result for Training With Using Prunning")
-    print("Pruned average Confusion Matrix: "+str(matrix_division(pruned_average_confusion_matrix, 10)))
+    print(matrix_division(pruned_average_confusion_matrix, 10))
     performance_report(pruned_average_confusion_matrix)
 
 
