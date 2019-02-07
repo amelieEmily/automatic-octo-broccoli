@@ -1,0 +1,84 @@
+This file contains the test result from running ten-fold cross validation of both dataset with and without pruning. The result is also included in the final report.
+-------------- CLEAN & WITHOUT PRUNE ---------------
+Final Average Result for Training Without Using Prunning:
+[[49.2, 0.0, 0.3, 0.5], [0.0, 48.4, 1.6, 0.0], [0.6, 1.8, 47.5, 0.1], [0.4, 0.0, 0.2, 49.4]]
+Classification rate: 0.9725000000000001
+Class 1 metrics:
+Recall: 0.9840000000000001
+Precision: 0.9800796812749004
+F1-Measure: 0.9820359281437128
+Class 2 metrics:
+Recall: 0.968
+Precision: 0.9641434262948207
+F1-Measure: 0.9660678642714571
+Class 3 metrics:
+Recall: 0.95
+Precision: 0.9576612903225806
+F1-Measure: 0.9538152610441766
+Class 4 metrics:
+Recall: 0.988
+Precision: 0.988
+F1-Measure: 0.988
+
+--------------- CLEAN & WITH PRUNE -----------------
+Final Average Result for Training With Using Prunning
+[[49.2, 0.0, 0.3, 0.5], [0.0, 47.2, 2.8, 0.0], [0.2, 1.7, 47.7, 0.4], [0.3, 0.0, 0.2, 49.5]]
+Classification rate: 0.968
+Class 1 metrics:
+Recall: 0.9840000000000001
+Precision: 0.9899396378269618
+F1-Measure: 0.9869608826479439
+Class 2 metrics:
+Recall: 0.9440000000000001
+Precision: 0.9652351738241308
+F1-Measure: 0.9544994944388271
+Class 3 metrics:
+Recall: 0.9540000000000001
+Precision: 0.9352941176470587
+F1-Measure: 0.9445544554455445
+Class 4 metrics:
+Recall: 0.99
+Precision: 0.9821428571428572
+F1-Measure: 0.9860557768924304
+
+-------------- NOISY & WITHOUT PRUNE ---------------
+Final Average Result for Training Without Using Prunning:
+[[37.7, 3.7, 3.1, 4.5], [2.9, 40.6, 3.3, 2.9], [3.4, 3.1, 41.6, 3.4], [3.7, 2.8, 3.6, 39.7]]
+Classification rate: 0.7980000000000002
+Class 1 metrics:
+Recall: 0.7693877551020407
+Precision: 0.790356394129979
+F1-Measure: 0.779731127197518
+Class 2 metrics:
+Recall: 0.8169014084507044
+Precision: 0.8087649402390438
+F1-Measure: 0.8128128128128129
+Class 3 metrics:
+Recall: 0.8077669902912622
+Precision: 0.8062015503875969
+F1-Measure: 0.8069835111542193
+Class 4 metrics:
+Recall: 0.7971887550200804
+Precision: 0.7861386138613862
+F1-Measure: 0.7916251246261218
+
+--------------- NOISY & WITH PRUNE -----------------
+Final Average Result for Training With Using Prunning
+[[38.9, 2.9, 3.0, 4.2], [2.6, 41.9, 3.6, 1.6], [2.9, 3.6, 42.8, 2.2], [4.5, 2.0, 2.5, 40.8]]
+Classification rate: 0.8219999999999998
+Class 1 metrics:
+Recall: 0.7938775510204081
+Precision: 0.7955010224948875
+F1-Measure: 0.7946884576098059
+Class 2 metrics:
+Recall: 0.8430583501006036
+Precision: 0.8313492063492064
+F1-Measure: 0.8371628371628372
+Class 3 metrics:
+Recall: 0.8310679611650484
+Precision: 0.8246628131021194
+F1-Measure: 0.8278529980657638
+Class 4 metrics:
+Recall: 0.8192771084337349
+Precision: 0.8360655737704918
+F1-Measure: 0.8275862068965517

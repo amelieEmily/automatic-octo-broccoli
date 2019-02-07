@@ -189,10 +189,10 @@ def ten_cross_validation_with_prun(dataset):
             for y in range(NUM_OF_FOLDS - 1): #Splits the validation_and_training_set into validation and training set individually.
                 if (y != x):
                     training_set.extend(validation_and_training_set[y]) #Use extend to flatten the list.
-            trained_tree = decision_tree_learning(training_set, 0)[0] #Train the model with the training set.
-            pruned_tree = pruning(validation_set, trained_tree)
-            confusion_matrix_data_for_pruned_tree = cal_confusion_matrix(test_set, pruned_tree, False)
-            pruned_average_confusion_matrix = matrix_addition(pruned_average_confusion_matrix, confusion_matrix_data_for_pruned_tree)
+        trained_tree = decision_tree_learning(training_set, 0)[0] #Train the model with the training set.
+        pruned_tree = pruning(validation_set, trained_tree)
+        confusion_matrix_data_for_pruned_tree = cal_confusion_matrix(test_set, pruned_tree, False)
+        pruned_average_confusion_matrix = matrix_addition(pruned_average_confusion_matrix, confusion_matrix_data_for_pruned_tree)
     print("Final Average Result for Training With Using Prunning")
     print(matrix_division(pruned_average_confusion_matrix, 10))
     performance_report(pruned_average_confusion_matrix)
