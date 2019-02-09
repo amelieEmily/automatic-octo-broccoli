@@ -26,6 +26,7 @@ def decision_tree_learning(dataset, depth):
     else:
         node = find_split(dataset)
         if node == None:
+            # print(len(dataset))
             count = [0,0,0,0]
             for datum in dataset:
                 count[int(datum[-1].item())-1] += 1
@@ -74,6 +75,10 @@ def find_split_point_for_column(dataset, column): #return the best gaining split
     row_length = len(dataset)
     split_exist = False
     for num in range(row_length - 1): #Compare two adjacent data and find split point with the biggest gain.
+        # if ((dataset[num][COL_OF_LABELS] != dataset[num + 1][COL_OF_LABELS]) and (dataset[num][column] == dataset[num + 1][column])):
+        #     temp = dataset[num].copy()
+        #     dataset[num] = dataset[num + 1].copy()
+        #     dataset[num + 1] = temp.copy()
         if ((dataset[num][COL_OF_LABELS] != dataset[num + 1][COL_OF_LABELS]) and (dataset[num][column] != dataset[num + 1][column])): #Find a split point.
             split_exist = True
             split_point = dataset[num + 1][column]
@@ -149,6 +154,7 @@ def get_folds(dataset_in_folds, folds_num): #Return folds whose index is given a
 
 def ten_cross_validation_without_prun(dataset):
     test_set = []
+    max_depth = 0
     np.random.shuffle(dataset)
     average_confusion_matrix = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
     for i in range(NUM_OF_FOLDS):
@@ -159,20 +165,24 @@ def ten_cross_validation_without_prun(dataset):
         for z in range(NUM_OF_FOLDS): #This mainly splits the whole set into test set and the rest, which is validation set and training set.
             if (z != i):
                 validation_and_training_set.extend(dataset_in_folds[z])
-        trained_tree = decision_tree_learning(validation_and_training_set, 0)[0]
-        print("Training Without Using Prunning")
-        confusion_matrix = cal_confusion_matrix(test_set, trained_tree, True)
-        performance_report(confusion_matrix)
+        (trained_tree, depth) = decision_tree_learning(validation_and_training_set, 0)
+        if depth > max_depth:
+            max_depth = depth
+        # print("Training Without Using Prunning")
+        confusion_matrix = cal_confusion_matrix(test_set, trained_tree, False)
+        # performance_report(confusion_matrix)
         average_confusion_matrix = matrix_addition(average_confusion_matrix, confusion_matrix)
     print("Final Average Result for Training Without Using Prunning: ")
     print(matrix_division(average_confusion_matrix,10))
     performance_report(average_confusion_matrix)
+    print("Maximal Depth: "+str(max_depth))
 
 
 
 def ten_cross_validation_with_prun(dataset):
     test_set = []
     np.random.shuffle(dataset)
+    max_depth = 0
     pruned_average_confusion_matrix = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
     for i in range(NUM_OF_FOLDS): #let Test_set be different fold every time.
         dataset_in_folds = divide_set_into_folds(dataset, NUM_OF_FOLDS) #Divide the dataset into 10 folds.
@@ -189,13 +199,16 @@ def ten_cross_validation_with_prun(dataset):
             for y in range(NUM_OF_FOLDS - 1): #Splits the validation_and_training_set into validation and training set individually.
                 if (y != x):
                     training_set.extend(validation_and_training_set[y]) #Use extend to flatten the list.
-        trained_tree = decision_tree_learning(training_set, 0)[0] #Train the model with the training set.
-        pruned_tree = pruning(validation_set, trained_tree)
-        confusion_matrix_data_for_pruned_tree = cal_confusion_matrix(test_set, pruned_tree, False)
-        pruned_average_confusion_matrix = matrix_addition(pruned_average_confusion_matrix, confusion_matrix_data_for_pruned_tree)
+            (trained_tree, depth) = decision_tree_learning(training_set, 0) #Train the model with the training set.
+            if depth > max_depth:
+                max_depth = depth
+            pruned_tree = pruning(validation_set, trained_tree)
+            confusion_matrix_data_for_pruned_tree = cal_confusion_matrix(test_set, pruned_tree, False)
+            pruned_average_confusion_matrix = matrix_addition(pruned_average_confusion_matrix, confusion_matrix_data_for_pruned_tree)
     print("Final Average Result for Training With Using Prunning")
-    print(matrix_division(pruned_average_confusion_matrix, 10))
+    print(matrix_division(pruned_average_confusion_matrix, 90))
     performance_report(pruned_average_confusion_matrix)
+    print("Maximal Depth: "+str(max_depth))
 
 
 def matrix_addition(matrix1, matrix2):
@@ -353,3 +366,15 @@ def node_count(node):
     if node is None:
         return 0
     return 1 + node_count(node.lChild) + node_count(node.rChild)
+
+def cal_variance(dataset):
+    for i in range(len(dataset[0])):
+        average = 0
+        variance = 0
+        for j in range(len(dataset)):
+            average += dataset[j][i]
+        average /= len(dataset)
+        for j in range(len(dataset)):
+            variance += 1/2 * (dataset[j][i] - average) * (dataset[j][i] - average)
+        variance /= (len(dataset) * len(dataset))
+        print("The variance for column "+ str(i)+ " : "+str(variance))
