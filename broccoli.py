@@ -26,7 +26,6 @@ def decision_tree_learning(dataset, depth):
     else:
         node = find_split(dataset)
         if node == None:
-            # print(len(dataset))
             count = [0,0,0,0]
             for datum in dataset:
                 count[int(datum[-1].item())-1] += 1
@@ -75,6 +74,7 @@ def find_split_point_for_column(dataset, column): #return the best gaining split
     row_length = len(dataset)
     split_exist = False
     for num in range(row_length - 1): #Compare two adjacent data and find split point with the biggest gain.
+        # This is an attempt to improve accuracy. It can improve noisy data set for about 3-4 percent, but it fails on clean data set. Deprecated.
         # if ((dataset[num][COL_OF_LABELS] != dataset[num + 1][COL_OF_LABELS]) and (dataset[num][column] == dataset[num + 1][column])):
         #     temp = dataset[num].copy()
         #     dataset[num] = dataset[num + 1].copy()
@@ -168,9 +168,7 @@ def ten_cross_validation_without_prun(dataset):
         (trained_tree, depth) = decision_tree_learning(validation_and_training_set, 0)
         if depth > max_depth:
             max_depth = depth
-        # print("Training Without Using Prunning")
         confusion_matrix = cal_confusion_matrix(test_set, trained_tree, False)
-        # performance_report(confusion_matrix)
         average_confusion_matrix = matrix_addition(average_confusion_matrix, confusion_matrix)
     print("Final Average Result for Training Without Using Prunning: ")
     print(matrix_division(average_confusion_matrix,10))
@@ -193,7 +191,6 @@ def ten_cross_validation_with_prun(dataset):
             if (z != i):
                 validation_and_training_set.append(dataset_in_folds[z])
         for x in range(NUM_OF_FOLDS - 1): #Switch validation set each time.
-            #print("Validation set " + str(x));
             training_set = []
             validation_set = validation_and_training_set[x]
             for y in range(NUM_OF_FOLDS - 1): #Splits the validation_and_training_set into validation and training set individually.
@@ -225,7 +222,9 @@ def matrix_division(matrix1, numerator):
             matrix[i][j] /= numerator
     return matrix
 
-
+def evaluate(test_set, trained_tree):
+    confusion_matrix = cal_confusion_matrix(test_set, trained_tree, False)
+    return cal_classification_rate(confusion_matrix)
 
 def flatten(tree, depth): # Helper fukction for adding all tree nodes into a list
     list = []
@@ -248,7 +247,7 @@ def pruning(validation_set, origin_decision_tree):
              continue
         if node.lChild.is_leaf() and node.rChild.is_leaf():
             original_confusion_matrix_data = cal_confusion_matrix(validation_set, decision_tree, False)
-            original = cal_avg_classification_rate(original_confusion_matrix_data) # Calculate the classification rate of the original tree
+            original = cal_classification_rate(original_confusion_matrix_data) # Calculate the classification rate of the original tree
             lChild = node.lChild # Store the Child nodes
             rChild = node.rChild
             ori_value = node.nodeValue
@@ -257,11 +256,11 @@ def pruning(validation_set, origin_decision_tree):
 
             node.nodeValue = lChild.nodeValue # Substitute with left child
             left_confusion_matrix_data = cal_confusion_matrix(validation_set, decision_tree, False)
-            newl = cal_avg_classification_rate(left_confusion_matrix_data) # Calculate the new classification rate
+            newl = cal_classification_rate(left_confusion_matrix_data) # Calculate the new classification rate
 
             node.nodeValue = rChild.nodeValue # Substitude with right child
             right_confusion_matrix_data = cal_confusion_matrix(validation_set, decision_tree, False)
-            newr = cal_avg_classification_rate(right_confusion_matrix_data) # Calculate the new classification rate
+            newr = cal_classification_rate(right_confusion_matrix_data) # Calculate the new classification rate
 
             if (original > newl) and (original > newr) : # If classification rate of original tree is higher, set back the child nodes and node value
                 node.lChild = lChild
@@ -328,7 +327,7 @@ def cal_precision_rates(confusion_matrix, label):
 def cal_f1(recall_rates, precision_rates): # This function takes in output from cal_recall_rates and cal_precision_rates
     return 2 * precision_rates * recall_rates / (recall_rates + precision_rates)
 
-def cal_avg_classification_rate(confusion_matrix):
+def cal_classification_rate(confusion_matrix):
     all_true = 0
     sample_size = 0
     for i in range(NUM_OF_LABELS):
@@ -340,7 +339,7 @@ def cal_avg_classification_rate(confusion_matrix):
 
 def performance_report(confusion_matrix): # Not sure where this goes (Please delete if not needed)
     class_num = len(confusion_matrix)
-    classification_rate = cal_avg_classification_rate(confusion_matrix)
+    classification_rate = cal_classification_rate(confusion_matrix)
     print("Classification rate: "+str(classification_rate))
     for i in range(class_num):
         print("Class " + str(i+1) + " metrics:")
@@ -352,7 +351,7 @@ def performance_report(confusion_matrix): # Not sure where this goes (Please del
         print("F1-Measure: " + str(f1))
     print(" ")
 
-
+#For debug.
 def equal_trees(node1, node2):
     if node1 is None and node2 is None:
         return True
@@ -362,11 +361,13 @@ def equal_trees(node1, node2):
         return False
     return equal_trees(node1.lChild, node2.lChild) and equal_trees(node1.rChild, node2.rChild)
 
+#For debug.
 def node_count(node):
     if node is None:
         return 0
     return 1 + node_count(node.lChild) + node_count(node.rChild)
 
+#For debug.
 def cal_variance(dataset):
     for i in range(len(dataset[0])):
         average = 0
