@@ -378,3 +378,9 @@ def cal_variance(dataset):
             variance += 1/2 * (dataset[j][i] - average) * (dataset[j][i] - average)
         variance /= (len(dataset) * len(dataset))
         print("The variance for column "+ str(i)+ " : "+str(variance))
+
+def evaluate(test_db, trained_tree):
+    confusion_matrix = cal_confusion_matrix(test_db, trained_tree, False)
+    print("Confusion Matrix: ")
+    print(matrix_division(average_confusion_matrix,10))
+    performance_report(confusion_matrix)
