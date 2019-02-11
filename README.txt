@@ -17,3 +17,12 @@ e.g.
 python3 cross_validation.py co395-cbc-dt/wifi_db/clean_dataset.txt true
 ```
 The above will build a pruned decision tree with the clean dataset and prints the result of evaluate with the test set.
+
+If using under Windows, and the terminal said "no such command", replace "python3" with "python" in the upper command line should work.
+
+e.g.
+```
+python cross_validation.py co395-cbc-dt/wifi_db/clean_dataset.txt true
+```
+
+
