@@ -197,14 +197,16 @@ def ten_cross_validation_with_prun(dataset):
                 if (y != x):
                     training_set.extend(validation_and_training_set[y]) #Use extend to flatten the list.
             (trained_tree, depth) = decision_tree_learning(training_set, 0) #Train the model with the training set.
+            pruned_tree = pruning(validation_set, trained_tree)
+            depth = get_depth(pruned_tree, -1)
             if depth > max_depth:
                 max_depth = depth
-            pruned_tree = pruning(validation_set, trained_tree)
             confusion_matrix_data_for_pruned_tree = cal_confusion_matrix(test_set, pruned_tree, False)
             pruned_average_confusion_matrix = matrix_addition(pruned_average_confusion_matrix, confusion_matrix_data_for_pruned_tree)
     print("Final Average Result for Training With Using Prunning")
     print(matrix_division(pruned_average_confusion_matrix, 90))
     performance_report(pruned_average_confusion_matrix)
+
     print("Maximal Depth: "+str(max_depth))
 
 
@@ -214,6 +216,13 @@ def matrix_addition(matrix1, matrix2):
         for j in range(len(matrix1[0])):
             matrix[i][j] += matrix2[i][j]
     return matrix
+
+def get_depth(node, depth):
+    if node == None:
+        return depth
+    left_depth = get_depth(node.lChild, depth + 1)
+    right_depth = get_depth(node.rChild, depth + 1)
+    return max(left_depth, right_depth)
 
 def matrix_division(matrix1, numerator):
     matrix = matrix1
@@ -349,6 +358,7 @@ def performance_report(confusion_matrix): # Not sure where this goes (Please del
         print("Recall: " + str(recall))
         print("Precision: " + str(precision))
         print("F1-Measure: " + str(f1))
+        print("--------------------------------------------")
     print(" ")
 
 #For debug.
